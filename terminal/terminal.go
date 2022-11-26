@@ -6,6 +6,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/mgeldert/golibs/array"
 )
 
 func ReadInputFromTerminal(prompt string) (string, error) {
@@ -87,9 +89,9 @@ func ReadBooleanFromTerminal(prompt string, trueVals, falseVals []string, caseSe
 	}
 
 	// Convert the input to a boolean
-	if StringArrayContains(trueVals, text) {
+	if array.Contains[string](trueVals, text) {
 		return true, nil
-	} else if StringArrayContains(falseVals, text) {
+	} else if array.Contains[string](falseVals, text) {
 		return false, nil
 	}
 

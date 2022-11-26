@@ -36,6 +36,23 @@ func DeleteIndex[T comparable](array []T, index int) ([]T, error) {
 	return append(array[:index], array[index+1:]...), nil
 }
 
+func DeleteFirstOccurrence[T comparable](array []T, value T) []T {
+	firstOccurrenceIndex := -1
+
+	for index, element := range array {
+		if element == value {
+			firstOccurrenceIndex = index
+			break
+		}
+	}
+
+	if firstOccurrenceIndex > -1 {
+		return append(array[:firstOccurrenceIndex], array[firstOccurrenceIndex+1:]...)
+	}
+
+	return array
+}
+
 func Push[T comparable](array *[]T, value T) {
 	InsertAt(array, value, 0)
 }
