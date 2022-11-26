@@ -57,6 +57,18 @@ func DeleteFirstOccurrence[T comparable](array []T, value T) []T {
 	return array
 }
 
+func DeleteAll[T comparable](array []T, value T) []T {
+	result := []T{}
+
+	for index, element := range array {
+		if element != value {
+			result = append(result, element)
+		}
+	}
+
+	return result
+}
+
 func Push[T comparable](array *[]T, value T) {
 	InsertAt(array, value, 0)
 }
