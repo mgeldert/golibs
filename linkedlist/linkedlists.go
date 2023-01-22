@@ -7,13 +7,17 @@ import (
 type LinkedListNode[T any] struct {
 	next *LinkedListNode[T]
 	previous *LinkedListNode[T]
-	Data T
+	data T
+}
+
+func (lln LinkedListNode[T]) Data() T {
+	return lln.data
 }
 
 func (lln *LinkedListNode[T]) String() string {
 	return fmt.Sprintf(
-		"[%p] prev:%0 11p | %-30v | next:%0 11p",
-		lln, lln.previous, lln.Data, lln.next,
+		"[%p] prev:%011p | %-30v | next:%011p",
+		lln, lln.previous, lln.data, lln.next,
 	)
 }
 
@@ -31,6 +35,34 @@ func NewLinkedList[T any](limit int) LinkedList[T] {
 		length: 0,
 		limit: limit,
 	}
+}
+
+func (ll *LinkedList[T]) getIndexPointer(index int) (*LinkedListNode[T], error) {
+
+	current := ll.head
+	for i := 0; i < index; i++ {
+		if current == nil {
+			return nil, fmt.Errorf("Unexpected nil pointer - list broken")
+		}
+		current = current.next
+	}
+
+	return current, nil
+}
+
+func (ll *LinkedList[T]) getIndexPointerPointer(index int) (**LinkedListNode[T], *LinkedListNode[T], error) {
+
+	var previous *LinkedListNode[T] = nil
+	current := &ll.head
+	for i := 0; i < index; i++ {
+		if *current == nil {
+			return nil, nil, fmt.Errorf("Unexpected nil pointer - list broken")
+		}
+		previous = *current
+		current = &((*current).next)
+	}
+
+	return current, previous, nil
 }
 
 func (ll LinkedList[T]) Head() *LinkedListNode[T] {
@@ -55,38 +87,24 @@ func(ll LinkedList[T]) Get(index int) (T, error) {
 		return zeroValue, fmt.Errorf("Index out of range")
 	}
 
-	current := ll.head
-	for i := 0; i < index; i++ {
-		current = current.next
+	if pointer, err := ll.getIndexPointer(index); err != nil {
+		return zeroValue, err
+	} else {
+		return pointer.data, nil
 	}
-
-	return current.Data, nil
 }
 
-func(ll *LinkedList[T]) Append(value T) error {
-	if ll.limit > 0 && ll.length == ll.limit {
-		return fmt.Errorf("List is full (max size %d)", ll.limit)
-	}
-	ll.length++
-
-	newNode := &LinkedListNode[T]{
-		next: nil,
-		previous: nil,
-		Data: value,
+func(ll LinkedList[T]) Set(value T, index int) error {
+	if index >= ll.length {
+		return fmt.Errorf("Index out of range")
 	}
 
-	if ll.head == nil {
-		ll.head = newNode
-		return nil
+	if pointer, err := ll.getIndexPointer(index); err != nil {
+		return err
+	} else {
+		(*pointer).data = value
 	}
-	
-	current := ll.head
-	for current.next != nil {
-		current = current.next
-	}
-	newNode.previous = current
-	current.next = newNode
-	ll.tail = newNode
+
 	return nil
 }
 
@@ -96,33 +114,42 @@ func(ll *LinkedList[T]) InsertAtIndex(value T, index int) error {
 	} else if index > ll.length {
 		return fmt.Errorf("Index out of range")
 	}
-	
-	newNode := &LinkedListNode[T]{
-		next: nil,
-		previous: nil,
-		Data: value,
+
+	current, previous, err := ll.getIndexPointerPointer(index)
+	if err != nil {
+		return err
 	}
 
-	var previous *LinkedListNode[T] = nil
-	current := &ll.head
-	for i := 0; i < index; i++ {
-		if *current == nil {
-			return fmt.Errorf("Index out of range")
-		}
-		previous = *current
-		current = &((*current).next)
-	}
-	
-	ll.length++
-	newNode.previous = previous
-	newNode.next = *current
-	if newNode.next == nil {
-		ll.tail = newNode
-	} else {
+	newNode := &LinkedListNode[T]{data: value,}
+	if *current != nil {
+		newNode.next = *current
+		newNode.previous = (*current).previous
 		(*current).previous = newNode
+	} else {
+		newNode.previous = previous
+		ll.tail = newNode
 	}
 	*current = newNode
 
+	ll.length++
+	return nil
+}
+
+func(ll *LinkedList[T]) Append(value T) error {
+	if ll.limit > 0 && ll.length == ll.limit {
+		return fmt.Errorf("List is full (max size %d)", ll.limit)
+	}
+
+	newNode := &LinkedListNode[T]{previous: ll.tail, data: value,}
+	if ll.tail != nil {
+		(*ll.tail).next = newNode
+	}
+	if ll.head == nil {
+		ll.head = newNode
+	}
+	ll.tail = newNode
+
+	ll.length++
 	return nil
 }
 
@@ -133,14 +160,9 @@ func(ll *LinkedList[T]) DeleteIndex(index int) error {
 		return fmt.Errorf("Index out of range")
 	}
 
-	var previous *LinkedListNode[T] = nil
-	current := &ll.head
-	for i := 0; i < index; i++ {
-		if *current == nil {
-			return fmt.Errorf("Index out of range")
-		}
-		previous = *current
-		current = &((*current).next)
+	current, previous, err := ll.getIndexPointerPointer(index)
+	if err != nil {
+		return err
 	}
 
 	if (*current).next == nil {
@@ -162,7 +184,7 @@ func(ll LinkedList[T]) Array() []T {
 	arr := []T{}
 	current := ll.head
 	for current != nil {
-		arr = append(arr, current.Data)
+		arr = append(arr, current.data)
 		current = current.next
 	}
 	return arr
@@ -170,12 +192,12 @@ func(ll LinkedList[T]) Array() []T {
 
 func (ll LinkedList[T]) String() string {
 	output := ""
-	output += fmt.Sprintf("List length: %7d\n", ll.length)
-	output += fmt.Sprintf("Max length:  %7d\n", ll.limit)
+	output += fmt.Sprintf("List length: %8d\n", ll.length)
+	output += fmt.Sprintf("Max. length: %8d\n", ll.limit)
 	output += fmt.Sprintf("Head: %p\n", ll.head)
 	current := ll.head
 	for current != nil {
-		output += fmt.Sprintf("%v\n", current)
+		output += fmt.Sprintf("     %v\n", current)
 		current = current.next
 	}
 	output += fmt.Sprintf("Tail: %p\n", ll.tail)
